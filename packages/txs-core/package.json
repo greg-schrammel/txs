@@ -1,6 +1,6 @@
 {
   "name": "@pcnv/txs-core",
-  "version": "0.0.8",
+  "version": "0.1.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/ConcaveFi/txs"
@@ -10,21 +10,30 @@
   "files": [
     "dist"
   ],
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/index.d.ts"
+      ]
+    }
+  },
   "scripts": {
     "build:types": "tsc --emitDeclarationOnly && tsc-alias",
     "build": "vite build && pnpm run build:types"
   },
   "devDependencies": {
-    "@ethersproject/providers": "^5.7.2",
-    "vite": "^4.0.4",
-    "vite-plugin-dts": "^1.7.1",
-    "vitest": "^0.27.1",
-    "tsc-alias": "^1.8.2"
+    "tsc-alias": "^1.8.8",
+    "vite": "^5.1.5",
+    "vite-plugin-dts": "^3.7.3",
+    "vitest": "^1.3.1"
+  },
+  "peerDependencies": {
+    "viem": ">=2.7"
   },
   "dependencies": {
-    "eeemiter": "^0.0.4"
+    "eeemitter": "^0.0.7"
   }
 }

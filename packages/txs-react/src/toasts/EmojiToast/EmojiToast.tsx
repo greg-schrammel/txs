@@ -18,7 +18,7 @@ const typeToProps = {
       </div>
     ),
   },
-  confirmed: {
+  success: {
     title: 'Transaction Confirmed',
     icon: (
       <div className={styles.completedIcon}>
@@ -26,7 +26,7 @@ const typeToProps = {
       </div>
     ),
   },
-  failed: {
+  reverted: {
     title: 'Transaction Failed',
     icon: (
       <div className={styles.failedIcon}>

@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
+import { defineConfig } from 'vite'
 import { optimizeCssModules } from 'vite-plugin-optimize-css-modules'
 
 // todo: would be cool to create a util that grabs all toasts and generates the top level folder pacakge.json and vite entry config
@@ -26,7 +26,7 @@ export default defineConfig({
         'react/jsx-runtime',
         'wagmi',
         'wagmi/chains',
-        'ethers',
+        'viem',
         '@zag-js/react',
         '@zag-js/toast',
       ],

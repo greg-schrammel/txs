@@ -1,5 +1,4 @@
-import React from 'react'
-import { CheckCircle2, Loader, XCircle, Timer } from 'lucide-react'
+import { CheckCircle2, Loader, Timer, XCircle } from 'lucide-react'
 
 import { TransactionStatusToastProps } from '../ToastsViewport'
 import { ThemeProps, useTheme } from '../useTheme'
@@ -14,11 +13,11 @@ const typeToProps = {
     title: 'Transaction Pending',
     icon: <Loader className={styles.pendingIcon} />,
   },
-  confirmed: {
+  success: {
     title: 'Transaction Confirmed',
     icon: <CheckCircle2 className={styles.completedIcon} />,
   },
-  failed: {
+  reverted: {
     title: 'Transaction Failed',
     icon: <XCircle className={styles.failedIcon} />,
   },

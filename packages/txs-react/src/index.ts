@@ -1,16 +1,15 @@
 export { TransactionsStoreProvider } from './Provider'
 export {
-  useRecentTransactions,
   useAddRecentTransaction,
-  useRemoveRecentTransaction,
   useClearRecentTransactions,
+  useRecentTransactions,
+  useRemoveRecentTransaction,
   useTransactionsStoreEvent,
 } from './hooks'
-export type { TypedUseAddRecentTransaction, TypedUseRecentTransactions } from './hooks'
 
 export { createTransactionsStore } from '@pcnv/txs-core'
-export type { StoredTransaction, NewTransaction } from '@pcnv/txs-core'
+export type { NewTransaction, StoredTransaction } from '@pcnv/txs-core'
 
-export { toast, ToastsViewport } from './toasts/ToastsViewport'
 export { Portal } from '@zag-js/react'
+export { ToastsViewport, toast } from './toasts/ToastsViewport'
 export type { TransactionStatusToastProps } from './toasts/ToastsViewport'

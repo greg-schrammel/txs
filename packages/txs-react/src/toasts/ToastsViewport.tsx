@@ -1,26 +1,41 @@
-import React, { PropsWithChildren, useCallback, useEffect } from 'react'
-import * as toast from '@zag-js/toast'
-import type { RenderOptions, UserDefinedGroupContext } from '@zag-js/toast/dist/toast.types'
-import { normalizeProps, useActor, useMachine } from '@zag-js/react'
 import type { StoredTransaction } from '@pcnv/txs-core'
-import { isMobile } from './utils'
+import { normalizeProps, useActor, useMachine } from '@zag-js/react'
+import * as toast from '@zag-js/toast'
+
+import React, { PropsWithChildren, useCallback, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { useTransactionsStore } from '../Provider'
+import { isMobile } from './utils'
 
-export type TransactionStatusToastProps<Meta = Record<string, string>> = Pick<
-  RenderOptions,
-  'onClose' | 'onClosing' | 'onOpen' | 'onUpdate' | 'dismiss'
-> & {
+export type TransactionStatusToastProps = {
+  onClose?: VoidFunction
+  /**
+   * Function called when the toast is leaving
+   */
+  onClosing?: VoidFunction
+  /**
+   * Function called when the toast is shown
+   */
+  onOpen?: VoidFunction
+  /**
+   * Function called when the toast is updated
+   */
+  onUpdate?: VoidFunction
+  /**
+   * Function to instantly dismiss the toast.
+   */
+  dismiss?: VoidFunction
+
   id: string
-  type: 'stuck' | 'pending' | 'confirmed' | 'failed'
-  transaction: StoredTransaction<Meta>
+  type: StoredTransaction['status'] | 'stuck'
+  transaction: StoredTransaction
   description?: string
   title?: string
   rootProps?: React.HTMLAttributes<HTMLElement>
 }
 
-export type ToastsViewportProps<Meta> = PropsWithChildren<{
-  TransactionStatusComponent: React.ComponentType<TransactionStatusToastProps<Meta>>
+export type ToastsViewportProps = PropsWithChildren<{
+  TransactionStatusComponent: React.ComponentType<TransactionStatusToastProps>
   placement?: toast.Placement
   /* 
     staleTime is how long the transaction remains relevant to display a status notification 
@@ -42,17 +57,30 @@ export type ToastsViewportProps<Meta> = PropsWithChildren<{
   */
   stuckTime?: number
 
-  getDescription?: <Meta>(tx: StoredTransaction<Meta>) => string
+  getDescription?: (tx: StoredTransaction) => string
 
-  max?: UserDefinedGroupContext['max']
-  gutter?: UserDefinedGroupContext['gutter']
-  offsets?: UserDefinedGroupContext['offsets']
+  /**
+   * The gutter or spacing between toasts
+   */
+  gutter?: string
+  /**
+   * The z-index applied to each toast group
+   */
+  zIndex?: number
+  /**
+   * The maximum number of toasts that can be shown at once
+   */
+  max?: number
+  /**
+   * The offset from the safe environment edge of the viewport
+   */
+  offsets?: string | Record<'left' | 'right' | 'bottom' | 'top', string>
 }>
 
 const BaseToast = ({ actor }: { actor: toast.Service }) => {
   const [state, send] = useActor(actor)
   const api = toast.connect(state, send, normalizeProps)
-  const toastElement = api.render()
+  const toastElement = state.context.render?.(api)
   if (!toastElement) return null
   return React.cloneElement(toastElement, { rootProps: api.rootProps })
 }
@@ -65,11 +93,9 @@ const _offsets = '12px'
 
 const statusToToastType = {
   pending: 'loading',
-  confirmed: 'success',
-  failed: 'error',
+  success: 'success',
+  reverted: 'error',
 } satisfies Record<StoredTransaction['status'], toast.Type>
-
-export type DefaultToastTransactionMeta = { description: string }
 
 /*
   removeDuplicateToasts
@@ -85,7 +111,7 @@ export type DefaultToastTransactionMeta = { description: string }
 const removeDuplicateToasts = (toasts: toast.Service[]) =>
   toasts.filter((value, index, self) => index === self.findIndex((t) => t.id === value.id))
 
-export function ToastsViewport<M extends StoredTransaction['meta'] = DefaultToastTransactionMeta>({
+export function ToastsViewport({
   TransactionStatusComponent,
   placement = 'top-end',
   staleTime = two_hours,
@@ -94,13 +120,15 @@ export function ToastsViewport<M extends StoredTransaction['meta'] = DefaultToas
   max = 6,
   gutter = _gutter,
   offsets = _offsets,
-}: ToastsViewportProps<M>) {
+  zIndex,
+}: ToastsViewportProps) {
   const [state, send] = useMachine(
     toast.group.machine({
       id: 'cnv-notifications',
       pauseOnPageIdle: true,
       pauseOnInteraction: true,
       max,
+      zIndex,
       gutter,
       offsets,
     }),
@@ -115,7 +143,7 @@ export function ToastsViewport<M extends StoredTransaction['meta'] = DefaultToas
   const disableToast = isMobile() && connector && ['metamask'].includes(connector.id)
 
   const upsertTxToast = useCallback(
-    (tx?: StoredTransaction<M>) => {
+    (tx?: StoredTransaction) => {
       if (!tx || disableToast) return
       if (tx.sentAt < Date.now() - staleTime) return // too old, not relevant to show
       const isPending = tx.status === 'pending'
@@ -144,8 +172,8 @@ export function ToastsViewport<M extends StoredTransaction['meta'] = DefaultToas
     const events = [
       store.on('added', upsertTxToast),
       store.on('updated', upsertTxToast),
-      store.on('removed', (tx?: StoredTransaction<M>) => tx && api.remove(tx.hash)),
-      store.on('mounted', (txs?: StoredTransaction<M>[]) => {
+      store.on('removed', (tx?: StoredTransaction) => tx && api.remove(tx.hash)),
+      store.on('mounted', (txs?: StoredTransaction[]) => {
         if (!txs || !showPendingOnReopen) return
         const pendingTxs = txs.filter((t) => t.status === 'pending')
         pendingTxs.forEach((tx) => upsertTxToast(tx))

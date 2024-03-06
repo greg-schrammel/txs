@@ -1,24 +1,13 @@
+import type { NewTransaction, StoredTransaction, TransactionsStoreEvents } from '@pcnv/txs-core'
 import { useCallback, useEffect } from 'react'
 import { useTransactionsStore } from './Provider'
-import type { NewTransaction, StoredTransaction, TransactionsStoreEvents } from '@pcnv/txs-core'
-import { DefaultToastTransactionMeta } from './toasts/ToastsViewport'
 
 import useSyncExternalStoreExports from 'use-sync-external-store/shim/with-selector'
 const { useSyncExternalStoreWithSelector } = useSyncExternalStoreExports
 
-export interface TypedUseRecentTransactions<Meta extends StoredTransaction['meta']> {
-  <Selected = StoredTransaction<Meta>[]>(
-    selector?: (state: StoredTransaction<Meta>[]) => Selected,
-    options?: { initialTransactions?: StoredTransaction<Meta>[] },
-  ): Selected
-}
-
-export const useRecentTransactions = <
-  Meta extends StoredTransaction['meta'],
-  Selector = StoredTransaction<Meta>[],
->(
-  selector: (txs: StoredTransaction<Meta>[]) => Selector = (txs) => txs as Selector,
-  { initialTransactions = [] }: { initialTransactions?: StoredTransaction<Meta>[] } = {},
+export const useRecentTransactions = <Selector = StoredTransaction[]>(
+  selector: (txs: StoredTransaction[]) => Selector = (txs) => txs as Selector,
+  { initialTransactions = [] }: { initialTransactions?: StoredTransaction[] } = {},
 ) => {
   const store = useTransactionsStore()
 
@@ -32,14 +21,9 @@ export const useRecentTransactions = <
   return transactions
 }
 
-export type TypedUseAddRecentTransaction<Meta extends NewTransaction['meta']> = () => (
-  transaction: NewTransaction<Meta>,
-) => void
-export const useAddRecentTransaction = <
-  Meta extends NewTransaction['meta'] = DefaultToastTransactionMeta,
->(): ((transaction: NewTransaction<Meta>) => void) => {
+export function useAddRecentTransaction() {
   const store = useTransactionsStore()
-  return useCallback((tx: NewTransaction<Meta>) => store.addTransaction(tx), [store])
+  return useCallback((tx: NewTransaction) => store.addTransaction(tx), [store])
 }
 
 export const useClearRecentTransactions = () => {

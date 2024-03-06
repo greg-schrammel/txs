@@ -1,14 +1,10 @@
-import { useModal } from 'connectkit'
-import { ButtonHTMLAttributes } from 'react'
-import { useAccount } from 'wagmi'
-import { StoredTransaction } from '@pcnv/txs-react'
+import { StoredTransaction, useAddRecentTransaction, useRecentTransactions } from '@pcnv/txs-react'
+import { useChainModal, useConnectModal } from '@rainbow-me/rainbowkit'
 import { useIsMounted } from 'hooks/useIsMounted'
-import { useContractWrite, usePrepareContractWrite } from 'wagmi'
-import { parseEther } from 'ethers/lib/utils'
-import {
-  useAddRecentTransaction,
-  useRecentTransactions,
-} from 'providers/RecentTransactionsProvider'
+import { ButtonHTMLAttributes } from 'react'
+import { parseEther } from 'viem'
+import { base } from 'viem/chains'
+import { useAccount, useChainId, useWriteContract } from 'wagmi'
 
 const Button = (props: ButtonHTMLAttributes<HTMLButtonElement>) => {
   return (
@@ -19,57 +15,76 @@ const Button = (props: ButtonHTMLAttributes<HTMLButtonElement>) => {
   )
 }
 
-const goerliWeth = '0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6'
 const amount = '0.0001'
 
 const WrapEthButton = () => {
   const { address } = useAccount()
 
-  const connectkit = useModal()
+  const connectModal = useConnectModal()
+  const chainModal = useChainModal()
   const isMounted = useIsMounted()
 
-  const { config } = usePrepareContractWrite({
-    address: goerliWeth,
-    abi: ['function deposit() public payable'],
-    functionName: 'deposit',
-    overrides: { value: parseEther(amount) },
-  })
+  const chainId = useChainId()
+
   const addTransaction = useAddRecentTransaction()
-  const {
-    write: wrap,
-    isLoading,
-    isSuccess,
-    reset,
-  } = useContractWrite({
-    ...config,
-    onSuccess: (tx) => {
-      addTransaction({
-        hash: tx.hash,
-        meta: {
-          pending: `Wrapping ${amount} ETH`,
-          confirmed: `Successfully wrapped ${amount} ETH`,
-          failed: `Failed to wrap ${amount} ETH`,
-        },
-      })
-      setTimeout(() => reset(), 10 * 1000)
-    },
-  })
+  const { writeContractAsync, isPending, isSuccess, reset } = useWriteContract()
 
   if (!isMounted) return null
 
-  if (!address) return <Button onClick={() => connectkit.setOpen(true)}>Connect Wallet</Button>
+  if (!address) return <Button onClick={connectModal.openConnectModal}>Connect Wallet</Button>
 
-  if (isLoading) return <Button disabled>⏳ Confirm in your wallet</Button>
+  if (chainId !== base.id) chainModal.openChainModal?.()
+
+  if (isPending) return <Button disabled>⏳ Confirm in your wallet</Button>
 
   if (isSuccess) return <Button disabled>🥳 Transaction Submitted</Button>
 
-  return <Button onClick={() => wrap?.()}>Wrap ETH</Button>
+  return (
+    <Button
+      onClick={() => {
+        writeContractAsync(
+          {
+            address: '0x4200000000000000000000000000000000000006',
+            abi: [
+              {
+                constant: false,
+                inputs: [],
+                name: 'deposit',
+                outputs: [],
+                payable: true,
+                stateMutability: 'payable',
+                type: 'function',
+              },
+            ],
+            functionName: 'deposit',
+            value: parseEther(amount),
+            chainId: base.id,
+          },
+          {
+            onSuccess: (hash) => {
+              addTransaction({
+                hash,
+                meta: {
+                  pending: `Wrapping ${amount} ETH`,
+                  success: `Successfully wrapped ${amount} ETH`,
+                  reverted: `Failed to wrap ${amount} ETH`,
+                },
+              })
+              setTimeout(() => reset(), 10 * 1000)
+            },
+          },
+        )
+      }}
+    >
+      Wrap ETH
+    </Button>
+  )
 }
 
 const statusToEmoji = {
   pending: '⏳',
-  confirmed: '👍',
-  failed: '😬',
+  success: '👍',
+  reverted: '😬',
 } satisfies Record<StoredTransaction['status'], string>
 
 const RecentTransactions = () => {

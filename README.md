@@ -13,10 +13,10 @@ A plug and play, customizable way to manage user transaction status on your dapp
 ### Install
 
 ```bash
-pnpm add @pcnv/txs-react ethers wagmi @zag-js/react @zag-js/toast
+pnpm add @pcnv/txs-react viem wagmi @zag-js/react @zag-js/toast
 
 # zag is not required if you want to create your own notification components
-pnpm add @pcnv/txs-react ethers wagmi
+pnpm add @pcnv/txs-react viem wagmi
 ```
 
 ### Usage
@@ -28,6 +28,7 @@ import {
   createTransactionsStore,
   ToastsViewport,
   TransactionsStoreProvider,
+  TransactionStatusToastProps,
 } from '@pcnv/txs-react'
 
 // import a builtin toast component or create your own
@@ -57,20 +58,29 @@ And in your component
 
   ...
 
-  const { config } = usePrepareContractWrite(...)
   const addTransaction = useAddRecentTransaction()
-  const { write } = useContractWrite({
-    ...config,
-    onSuccess: (tx) => {
-      // useContractWrite onSuccess means the transaciton was signed and sent
-      addTransaction({
-        hash: tx.hash,
-        meta: {
-          description: 'Your transaction description'
-        },
-      })
+  const { writeContract } = useWriteContract()
+
+  ...
+
+  writeContract(
+    {
+      address: ...,
+      abi: ...,
+      functionName: ...,
     },
-  })
+    {
+      onSuccess: (hash) => {
+        addTransaction({
+          hash,
+          meta: {
+            // more on meta below
+            description: `Wrapping ${amount} ETH`,
+          },
+        })
+      },
+    },
+  )
 ```
 
 ## Hooks
@@ -199,12 +209,17 @@ import {
   TransactionStatusToastProps,
   TypedUseAddRecentTransaction,
   TypedUseRecentTransactions,
-  useRecentTransactions as _useRecentTransactions,
-  useAddRecentTransaction as _useAddRecentTransaction,
 } from '@pcnv/txs-react'
 
-type TransactionMeta = {
-  [status in StoredTransaction['status']]: string
+// add your custom fields to the global namespace Txs.Meta
+declare global {
+  namespace Txs {
+    export interface Meta {
+      pending: string
+      success: string
+      reverted: string
+    }
+  }
 }
 
 const MyCustomNotification = (props: TransactionStatusToastProps<TransactionMeta>) => {
@@ -212,14 +227,8 @@ const MyCustomNotification = (props: TransactionStatusToastProps<TransactionMeta
   return <EmojiToast {...props} description={tx.meta[tx.status]} />
 }
 
-// you can rexport the hooks passing your new type as a generic to type check on use
-// just remember to import from this file, and not @pcnv/txs-react
-export const useRecentTransactions: TypedUseRecentTransactions<TransactionMeta> =
-  _useRecentTransactions
-export const useAddRecentTransaction: TypedUseAddRecentTransaction<TransactionMeta> =
-  _useAddRecentTransaction
-
 ...
+
 <ToastsViewport TransactionStatusComponent={MyCustomNotification} />
 
 ...
@@ -249,6 +258,12 @@ This time only some properties are saved to localstorage based on the transactio
 ```jsx
 type TransactionType = { type: 'approve'; amount: string; token: string } // | { ...more types }
 
+declare global {
+  namespace Txs {
+    export interface Meta extends TransactionType {}
+  }
+}
+
 type TransactionMetaToStatusLabel = {
   [Meta in TransactionType as Meta['type']]: (
     meta: Omit<Meta, 'type'>,
@@ -271,9 +286,7 @@ const MyCustomNotification = (props: TransactionStatusToastProps<TransactionType
 
 ...
 
-// and the hook usage
-const addTransaction = useAddRecentTransaction<TransactionType>()
-...
+const addTransaction = useAddRecentTransaction()
 addTransaction({
   hash: tx.hash,
   meta: {
@@ -285,6 +298,7 @@ addTransaction({
 ```
 
 ## Enter & Exit Animations
+
 Check [Zagjs Docs](https://zagjs.com/components/react/toast#styling-guide)
 
 # More

@@ -1,4 +1,4 @@
-import { StoredTransaction } from './store'
+import type { StoredTransaction } from './store'
 
 function jsonSafeParse(string: string | null) {
   try {
